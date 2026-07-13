@@ -1,0 +1,566 @@
+import React, { useState, useEffect } from 'react';
+import { ChevronRight, CheckCircle, Circle, BookOpen, Zap, RotateCcw } from 'lucide-react';
+
+const KoreanLearningTool = () => {
+  const [currentLesson, setCurrentLesson] = useState(1);
+  const [mode, setMode] = useState('lessons'); // lessons, flashcard, quiz
+  const [progress, setProgress] = useState({});
+  const [notes, setNotes] = useState({});
+  const [lessonNotes, setLessonNotes] = useState('');
+  const [flashcardIndex, setFlashcardIndex] = useState(0);
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [quizAnswers, setQuizAnswers] = useState({});
+  const [showResults, setShowResults] = useState(false);
+
+  // Load progress from storage
+  useEffect(() => {
+    const loadProgress = async () => {
+      try {
+        const result = await window.storage.get('korean-progress');
+        if (result) {
+          setProgress(JSON.parse(result.value));
+        }
+        const notesResult = await window.storage.get('korean-notes');
+        if (notesResult) {
+          setNotes(JSON.parse(notesResult.value));
+        }
+      } catch (e) {
+        console.log('Storage not available, using local state');
+      }
+    };
+    loadProgress();
+  }, []);
+
+  // Save progress to storage
+  const saveProgress = async (newProgress) => {
+    try {
+      await window.storage.set('korean-progress', JSON.stringify(newProgress), false);
+      setProgress(newProgress);
+    } catch (e) {
+      console.log('Could not save progress');
+    }
+  };
+
+  // Save notes
+  const saveNotes = async (lessonNum) => {
+    const newNotes = { ...notes, [lessonNum]: lessonNotes };
+    try {
+      await window.storage.set('korean-notes', JSON.stringify(newNotes), false);
+      setNotes(newNotes);
+    } catch (e) {
+      console.log('Could not save notes');
+    }
+  };
+
+  const lessons = [
+    {
+      id: 1,
+      title: 'Hello, Thank you / 안녕하세요. 감사합니다',
+      pages: [8, 9, 10, 11, 12],
+      vocabulary: [
+        { korean: '안녕하세요', rom: 'Annyeonghaseyo', eng: 'Hello' },
+        { korean: '감사합니다', rom: 'Gamsahamnida', eng: 'Thank you' },
+        { korean: '네', rom: 'Ne', eng: 'Yes' },
+        { korean: '아니오', rom: 'Aniyo', eng: 'No' }
+      ],
+      quiz: [
+        { q: 'How do you say "Hello"?', options: ['안녕', '안녕하세요', '감사합니다'], ans: 1 },
+        { q: 'What means "Thank you"?', options: ['네', '감사합니다', '아니오'], ans: 1 }
+      ]
+    },
+    {
+      id: 2,
+      title: 'Yes, No, What? / 네, 아니요',
+      pages: [13, 14, 15, 16, 17, 18, 19],
+      vocabulary: [
+        { korean: '네', rom: 'Ne', eng: 'Yes' },
+        { korean: '아니요', rom: 'Aniyo', eng: 'No' },
+        { korean: '뭐', rom: 'Mwo', eng: 'What' },
+        { korean: '이거', rom: 'Igeo', eng: 'This (thing)' }
+      ],
+      quiz: [
+        { q: 'Say "Yes" in Korean', options: ['아니요', '네', '뭐'], ans: 1 },
+        { q: 'What is "뭐"?', options: ['Yes', 'No', 'What'], ans: 2 }
+      ]
+    },
+    {
+      id: 3,
+      title: 'Goodbye, See you / 안녕히 계세요. 안녕히 가세요',
+      pages: [20, 21, 22, 23],
+      vocabulary: [
+        { korean: '안녕히 계세요', rom: 'Annyeonghi gyeseyo', eng: 'Goodbye (to someone staying)' },
+        { korean: '안녕히 가세요', rom: 'Annyeonghi gaseyo', eng: 'Goodbye (to someone leaving)' },
+        { korean: '다시', rom: 'Dasi', eng: 'Again' },
+        { korean: '나중에', rom: 'Najunge', eng: 'Later' }
+      ],
+      quiz: [
+        { q: 'How to say goodbye to someone leaving?', options: ['안녕히 계세요', '안녕히 가세요'], ans: 1 }
+      ]
+    },
+    {
+      id: 4,
+      title: 'I\'m sorry, Excuse me / 죄송합니다. 자기요',
+      pages: [24, 25, 26, 27, 28],
+      vocabulary: [
+        { korean: '죄송합니다', rom: 'Joesonghamnida', eng: 'I\'m sorry (formal)' },
+        { korean: '미안해요', rom: 'Mianhaeyo', eng: 'I\'m sorry (casual)' },
+        { korean: '자기요', rom: 'Jagiyo', eng: 'Excuse me' },
+        { korean: '괜찮아요', rom: 'Gwaenchanhaeyo', eng: 'It\'s okay' }
+      ],
+      quiz: [
+        { q: 'Formal way to apologize?', options: ['미안해요', '죄송합니다'], ans: 1 }
+      ]
+    },
+    {
+      id: 5,
+      title: 'It\'s me, What is it? / -이예요. -예요',
+      pages: [29, 30, 31, 32, 33],
+      vocabulary: [
+        { korean: '이예요', rom: 'Iyeyo', eng: 'It is (ends in consonant)' },
+        { korean: '예요', rom: 'Yeyo', eng: 'It is (ends in vowel)' },
+        { korean: '뭐예요', rom: 'Mwoyeyo', eng: 'What is it?' },
+        { korean: '누예요', rom: 'Nuyeyo', eng: 'Who is it?' }
+      ],
+      quiz: [
+        { q: 'Use correct ending for "아이" (child)', options: ['아이이예요', '아이예요'], ans: 1 }
+      ]
+    },
+    {
+      id: 6,
+      title: 'This is..., What is this? / 이거 ... 이거 뭐예요?',
+      pages: [34, 35, 36, 37, 38],
+      vocabulary: [
+        { korean: '이거', rom: 'Igeo', eng: 'This (thing)' },
+        { korean: '저거', rom: 'Jeogeo', eng: 'That (thing far)' },
+        { korean: '그거', rom: 'Geugeo', eng: 'That (thing)' },
+        { korean: '뭐', rom: 'Mwo', eng: 'What' }
+      ],
+      quiz: [
+        { q: 'Which means "that" (far away)?', options: ['이거', '저거', '그거'], ans: 1 }
+      ]
+    },
+    {
+      id: 7,
+      title: 'This, That, It / 이, 저, 그, 가/것',
+      pages: [39, 40, 41, 42, 43, 44],
+      vocabulary: [
+        { korean: '이', rom: 'I', eng: 'This' },
+        { korean: '저', rom: 'Jeo', eng: 'That' },
+        { korean: '그', rom: 'Geu', eng: 'That/It' },
+        { korean: '것', rom: 'Geot', eng: 'Thing' }
+      ],
+      quiz: [
+        { q: 'What is the formal way to say "this"?', options: ['이거', '이것', '이예요'], ans: 1 }
+      ]
+    },
+    {
+      id: 8,
+      title: 'It\'s NOT me / 아니예요',
+      pages: [45, 46, 47, 48, 49],
+      vocabulary: [
+        { korean: '아니예요', rom: 'Aniyeyo', eng: 'It is not' },
+        { korean: '맞아요', rom: 'Majayo', eng: 'That\'s right' },
+        { korean: '틀렸어요', rom: 'Teullyeosseyo', eng: 'That\'s wrong' }
+      ],
+      quiz: [
+        { q: 'How to say "It is not"?', options: ['아니예요', '맞아요', '틀렸어요'], ans: 0 }
+      ]
+    },
+    {
+      id: 9,
+      title: 'Topic/Subject Marking Particles / -은/는, -이/가',
+      pages: [50, 51, 52, 53, 54, 55, 56, 57, 58, 59],
+      vocabulary: [
+        { korean: '은', rom: 'Eun', eng: 'Topic particle (consonant)' },
+        { korean: '는', rom: 'Neun', eng: 'Topic particle (vowel)' },
+        { korean: '이', rom: 'I', eng: 'Subject particle (consonant)' },
+        { korean: '가', rom: 'Ga', eng: 'Subject particle (vowel)' }
+      ],
+      quiz: [
+        { q: 'Use topic particle with "책" (book)', options: ['책은', '책는'], ans: 0 }
+      ]
+    },
+    {
+      id: 10,
+      title: 'Have, Don\'t have, There is, There isn\'t / 있어요, 없어요',
+      pages: [60, 61, 62, 63, 64, 65, 66],
+      vocabulary: [
+        { korean: '있어요', rom: 'Isseoyo', eng: 'Have/There is' },
+        { korean: '없어요', rom: 'Eobseoyo', eng: 'Don\'t have/There isn\'t' },
+        { korean: '뭐', rom: 'Mwo', eng: 'What' },
+        { korean: '뭐가 있어요?', rom: 'Mwoga isseoyo?', eng: 'What do you have?' }
+      ],
+      quiz: [
+        { q: 'How to say "I have"?', options: ['없어요', '있어요', '뭐예요'], ans: 1 }
+      ]
+    }
+  ];
+
+  // Add remaining lessons as simplified versions
+  const allLessons = [
+    ...lessons,
+    { id: 11, title: 'Please give me / 주세요', pages: [69, 70, 71, 72, 73, 74], vocabulary: [{ korean: '주세요', rom: 'Juseyo', eng: 'Please give me' }], quiz: [] },
+    { id: 12, title: 'Delicious, Tasty, Thank you for food', pages: [75, 76, 77], vocabulary: [{ korean: '맛있어요', rom: 'Masiteoyo', eng: 'It\'s delicious' }], quiz: [] },
+    { id: 13, title: 'I want to / 고 싶어요', pages: [80, 81, 82, 83, 84], vocabulary: [{ korean: '고 싶어요', rom: 'Go sipeyo', eng: 'I want to' }], quiz: [] },
+    { id: 14, title: 'What do you want to do? / 뭐 고 싶어요?', pages: [85, 86, 87, 88, 89], vocabulary: [{ korean: '뭐 고 싶어요?', rom: 'Mwo go sipeyo?', eng: 'What do you want to do?' }], quiz: [] },
+    { id: 15, title: 'Sino-Korean Numbers / 일, 이, 삼, 사, ...', pages: [90, 91, 92, 93, 94], vocabulary: [{ korean: '일', rom: 'Il', eng: 'One' }, { korean: '이', rom: 'I', eng: 'Two' }, { korean: '삼', rom: 'Sam', eng: 'Three' }], quiz: [] },
+    { id: 16, title: 'Basic Present Tense / -아/-어/-여요', pages: [95, 96, 97, 98, 99, 100], vocabulary: [{ korean: '-아요', rom: '-ayo', eng: 'Present tense (a-stem)' }], quiz: [] },
+    { id: 17, title: 'Past Tense / -았/었어요', pages: [101, 102, 103, 104, 105, 106], vocabulary: [{ korean: '-았어요', rom: '-asseyo', eng: 'Past tense' }], quiz: [] },
+    { id: 18, title: 'Location Marking Particles / 이디, -에, -에서', pages: [107, 108, 109, 110, 111, 112, 113, 114], vocabulary: [{ korean: '-에', rom: '-e', eng: 'Location particle' }], quiz: [] },
+    { id: 19, title: 'When / 언제', pages: [115, 116, 117, 118, 119], vocabulary: [{ korean: '언제', rom: 'Eonje', eng: 'When' }], quiz: [] },
+    { id: 20, title: 'Native Korean Numbers / 하나, 둘, 셋, 넷, ...', pages: [120, 121, 122, 123, 124, 125, 126, 127, 128], vocabulary: [{ korean: '하나', rom: 'Hana', eng: 'One' }, { korean: '둘', rom: 'Dul', eng: 'Two' }], quiz: [] },
+    { id: 21, title: 'Negative Sentences / 만, 지 않다', pages: [132, 133, 134, 135, 136], vocabulary: [{ korean: '-지 않다', rom: '-ji anta', eng: 'Not' }], quiz: [] },
+    { id: 22, title: 'Verbs / 하다', pages: [137, 138, 139, 140, 141], vocabulary: [{ korean: '하다', rom: 'Hada', eng: 'To do' }], quiz: [] },
+    { id: 23, title: 'Who? / 누구?', pages: [142, 143, 144, 145, 146], vocabulary: [{ korean: '누구', rom: 'Nugu', eng: 'Who' }], quiz: [] },
+    { id: 24, title: 'Why? How? / 왜? 어떻게?', pages: [147, 148, 149, 150, 151], vocabulary: [{ korean: '왜', rom: 'Wae', eng: 'Why' }, { korean: '어떻게', rom: 'Eotteoke', eng: 'How' }], quiz: [] },
+    { id: 25, title: 'From A to B, Until D / -에서/부터 -까지', pages: [152, 153, 154, 155, 156, 157], vocabulary: [{ korean: '-에서', rom: '-eseo', eng: 'From' }, { korean: '-까지', rom: '-kkaji', eng: 'Until' }], quiz: [] }
+  ];
+
+  const lesson = allLessons.find(l => l.id === currentLesson);
+
+  const markLessonComplete = () => {
+    const newProgress = { ...progress, [currentLesson]: true };
+    saveProgress(newProgress);
+  };
+
+  const handleNextLesson = () => {
+    markLessonComplete();
+    if (currentLesson < 25) {
+      setCurrentLesson(currentLesson + 1);
+      setMode('lessons');
+      setFlashcardIndex(0);
+      setQuizAnswers({});
+      setShowResults(false);
+    }
+  };
+
+  const handlePrevLesson = () => {
+    if (currentLesson > 1) {
+      setCurrentLesson(currentLesson - 1);
+      setMode('lessons');
+      setFlashcardIndex(0);
+      setQuizAnswers({});
+      setShowResults(false);
+    }
+  };
+
+  const completionPercentage = Math.round((Object.keys(progress).length / 25) * 100);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <BookOpen className="w-8 h-8 text-blue-600" />
+              <div>
+                <h1 className="text-3xl font-bold text-gray-800">Talk to Me in Korean - Level 1</h1>
+                <p className="text-gray-500">Learn Korean step by step</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-4xl font-bold text-blue-600">{completionPercentage}%</div>
+              <p className="text-gray-600">{Object.keys(progress).length}/25 lessons</p>
+            </div>
+          </div>
+          
+          {/* Progress Bar */}
+          <div className="w-full bg-gray-200 rounded-full h-3">
+            <div 
+              className="bg-blue-600 h-3 rounded-full transition-all"
+              style={{ width: `${completionPercentage}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Sidebar - Lessons List */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg shadow-lg p-4 sticky top-4">
+              <h2 className="font-bold text-gray-800 mb-4">Lessons</h2>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {allLessons.map(l => (
+                  <button
+                    key={l.id}
+                    onClick={() => {
+                      setCurrentLesson(l.id);
+                      setMode('lessons');
+                      setFlashcardIndex(0);
+                      setLessonNotes(notes[l.id] || '');
+                    }}
+                    className={`w-full text-left p-2 rounded-lg transition-all flex items-center gap-2 ${
+                      currentLesson === l.id
+                        ? 'bg-blue-600 text-white'
+                        : 'hover:bg-gray-100 text-gray-700'
+                    }`}
+                  >
+                    {progress[l.id] ? (
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                    ) : (
+                      <Circle className="w-5 h-5" />
+                    )}
+                    <span className="text-sm truncate">
+                      Lesson {l.id}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="lg:col-span-3">
+            {lesson && (
+              <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                  Lesson {currentLesson}: {lesson.title}
+                </h2>
+                
+                {/* Mode Selector */}
+                <div className="flex gap-2 mb-6 border-b">
+                  <button
+                    onClick={() => setMode('lessons')}
+                    className={`px-4 py-2 font-medium transition-all ${
+                      mode === 'lessons'
+                        ? 'text-blue-600 border-b-2 border-blue-600'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    📖 Lesson
+                  </button>
+                  {lesson.vocabulary.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setMode('flashcard');
+                        setFlashcardIndex(0);
+                        setIsFlipped(false);
+                      }}
+                      className={`px-4 py-2 font-medium transition-all ${
+                        mode === 'flashcard'
+                          ? 'text-blue-600 border-b-2 border-blue-600'
+                          : 'text-gray-600 hover:text-gray-800'
+                      }`}
+                    >
+                      ⚡ Flashcards ({lesson.vocabulary.length})
+                    </button>
+                  )}
+                  {lesson.quiz.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setMode('quiz');
+                        setQuizAnswers({});
+                        setShowResults(false);
+                      }}
+                      className={`px-4 py-2 font-medium transition-all ${
+                        mode === 'quiz'
+                          ? 'text-blue-600 border-b-2 border-blue-600'
+                          : 'text-gray-600 hover:text-gray-800'
+                      }`}
+                    >
+                      ✓ Quiz ({lesson.quiz.length})
+                    </button>
+                  )}
+                </div>
+
+                {/* Lesson Content */}
+                {mode === 'lessons' && (
+                  <div>
+                    <div className="bg-blue-50 p-4 rounded-lg mb-6">
+                      <p className="text-gray-700 mb-4">📖 Book pages: {lesson.pages.join(', ')}</p>
+                      <details className="mb-4">
+                        <summary className="font-semibold cursor-pointer text-gray-800">📝 Vocabulary</summary>
+                        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {lesson.vocabulary.map((word, idx) => (
+                            <div key={idx} className="bg-white p-3 rounded border-l-4 border-blue-600">
+                              <p className="font-semibold text-lg">{word.korean}</p>
+                              <p className="text-sm text-gray-600 italic">{word.rom}</p>
+                              <p className="text-sm text-gray-700">{word.eng}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    </div>
+
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h3 className="font-bold text-gray-800 mb-3">📌 Your Notes</h3>
+                      <textarea
+                        value={lessonNotes}
+                        onChange={(e) => setLessonNotes(e.target.value)}
+                        placeholder="Write your notes here..."
+                        className="w-full h-24 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      />
+                      <button
+                        onClick={() => saveNotes(currentLesson)}
+                        className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                      >
+                        Save Notes
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Flashcard Mode */}
+                {mode === 'flashcard' && lesson.vocabulary.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="text-center text-gray-600 mb-4">
+                      Card {flashcardIndex + 1} of {lesson.vocabulary.length}
+                    </div>
+                    
+                    <div
+                      onClick={() => setIsFlipped(!isFlipped)}
+                      className="cursor-pointer perspective h-48 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg p-6 flex items-center justify-center text-white text-center hover:shadow-lg transition transform"
+                    >
+                      <div>
+                        <p className="text-sm opacity-75 mb-2">Click to flip</p>
+                        <p className="text-3xl font-bold">
+                          {isFlipped 
+                            ? lesson.vocabulary[flashcardIndex].eng
+                            : lesson.vocabulary[flashcardIndex].korean
+                          }
+                        </p>
+                        {isFlipped && (
+                          <p className="text-sm mt-4 opacity-90">
+                            ({lesson.vocabulary[flashcardIndex].rom})
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 justify-center">
+                      <button
+                        onClick={() => {
+                          if (flashcardIndex > 0) {
+                            setFlashcardIndex(flashcardIndex - 1);
+                            setIsFlipped(false);
+                          }
+                        }}
+                        disabled={flashcardIndex === 0}
+                        className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg disabled:opacity-50"
+                      >
+                        ← Previous
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (flashcardIndex < lesson.vocabulary.length - 1) {
+                            setFlashcardIndex(flashcardIndex + 1);
+                            setIsFlipped(false);
+                          }
+                        }}
+                        disabled={flashcardIndex === lesson.vocabulary.length - 1}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 hover:bg-blue-700"
+                      >
+                        Next →
+                      </button>
+                    </div>
+
+                    {lesson.vocabulary[flashcardIndex] && (
+                      <div className="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-400">
+                        <p className="font-semibold text-gray-800">{lesson.vocabulary[flashcardIndex].korean}</p>
+                        <p className="text-sm text-gray-600 italic">{lesson.vocabulary[flashcardIndex].rom}</p>
+                        <p className="text-sm text-gray-700 mt-1">{lesson.vocabulary[flashcardIndex].eng}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Quiz Mode */}
+                {mode === 'quiz' && lesson.quiz.length > 0 && (
+                  <div className="space-y-4">
+                    {!showResults ? (
+                      <>
+                        {lesson.quiz.map((q, idx) => (
+                          <div key={idx} className="border rounded-lg p-4">
+                            <p className="font-semibold text-gray-800 mb-3">{idx + 1}. {q.q}</p>
+                            <div className="space-y-2">
+                              {q.options.map((option, optIdx) => (
+                                <label key={optIdx} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                                  <input
+                                    type="radio"
+                                    name={`q${idx}`}
+                                    value={optIdx}
+                                    checked={quizAnswers[idx] === optIdx}
+                                    onChange={() => setQuizAnswers({ ...quizAnswers, [idx]: optIdx })}
+                                    className="w-4 h-4"
+                                  />
+                                  <span className="text-gray-700">{option}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                        <button
+                          onClick={() => setShowResults(true)}
+                          className="w-full mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold"
+                        >
+                          Check Results
+                        </button>
+                      </>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                          <p className="text-lg font-bold text-blue-800">
+                            Score: {Object.keys(quizAnswers).reduce((acc, idx) => 
+                              acc + (quizAnswers[idx] === lesson.quiz[idx].ans ? 1 : 0), 0
+                            )} / {lesson.quiz.length}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setQuizAnswers({});
+                            setShowResults(false);
+                          }}
+                          className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                        >
+                          Try Again
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Navigation */}
+                <div className="flex gap-4 mt-8 pt-6 border-t">
+                  <button
+                    onClick={handlePrevLesson}
+                    disabled={currentLesson === 1}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-300 text-gray-800 rounded-lg disabled:opacity-50 hover:bg-gray-400 transition"
+                  >
+                    ← Previous
+                  </button>
+                  
+                  {!progress[currentLesson] && (
+                    <button
+                      onClick={markLessonComplete}
+                      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                    >
+                      <CheckCircle className="w-5 h-5" />
+                      Mark as Complete
+                    </button>
+                  )}
+                  {progress[currentLesson] && (
+                    <div className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg">
+                      <CheckCircle className="w-5 h-5" />
+                      Completed ✓
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleNextLesson}
+                    disabled={currentLesson === 25}
+                    className="ml-auto flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 hover:bg-blue-700 transition"
+                  >
+                    Next →
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default KoreanLearningTool;
